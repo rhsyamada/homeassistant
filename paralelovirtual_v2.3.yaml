@@ -38,6 +38,10 @@ action:
     target:
       entity_id:
         !input entrada_switchs  
-  - delay: "{{ delay_var }}"
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 0
+      milliseconds: "{{ delay_var }}"
 
 mode: single
