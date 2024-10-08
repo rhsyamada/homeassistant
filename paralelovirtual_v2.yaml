@@ -38,6 +38,6 @@ action:
     target:
       entity_id:
         !input entrada_switchs  
-  - delay: "{{ delay_var | multiply(60) }}"
+  - delay: "{{ delay_var }}"
 
 mode: single
