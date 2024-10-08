@@ -6,7 +6,7 @@ blueprint:
     entrada_timeout:      
       name: Wait time
       description: Time to wait until off_action is called.
-      default: 2
+      default: 1000
       selector:
         number:
           min: 0
