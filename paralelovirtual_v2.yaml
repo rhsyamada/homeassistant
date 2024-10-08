@@ -1,5 +1,5 @@
 blueprint:
-  name: Paralelo Virtual - rhsyamada
+  name: Paralelo Virtual V2 - rhsyamada
   description: Acenda/Apaga todos os switchs/lights do grupo simultaneamente
   domain: automation
   input:
