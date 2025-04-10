@@ -124,11 +124,11 @@ blueprint:
 
     tempo_luz_acesa:
       name: Tempo que a luz deve permanecer acesa após detectar presença (segundos)
-      default: 0
+      default: 30
       selector:
         number:
           min: 0
-          max: 3600
+          max: 300
           unit_of_measurement: s
 
 trigger:
@@ -144,8 +144,12 @@ trigger:
   - platform: state
     entity_id: !input sensores_presenca
     to: 'on'
-    from: 'off'
     id: presenca
+
+  - platform: state
+    entity_id: !input sensores_presenca
+    to: 'off'
+    id: presenca_off
 
 variables:
   grupo: !input grupo_zigbee
@@ -173,7 +177,7 @@ variables:
     {% set h1_start = horario1_ini + (':00' if horario1_ini|length == 5 else '') %}
     {% set h1_end = horario1_fim + (':00' if horario1_fim|length == 5 else '') %}
     {% set h2_start = horario2_ini + (':00' if horario2_ini|length == 5 else '') %}
-    {% set h2_end = horario_presenca_2_fim + (':00' if horario_presenca_2_fim|length == 5 else '') %}
+    {% set h2_end = horario2_fim + (':00' if horario2_fim|length == 5 else '') %}
     {% set in_range = (h1_start <= now <= h1_end) or (h2_start <= now <= h2_end) %}
     {% set wrap1 = h1_start > h1_end and (now >= h1_start or now <= h1_end) %}
     {% set wrap2 = h2_start > h2_end and (now >= h2_start or now <= h2_end) %}
@@ -187,9 +191,11 @@ condition:
   - condition: or
     conditions:
       - condition: template
-        value_template: "{{ trigger.id != 'presenca' }}"
+        value_template: "{{ trigger.id != 'presenca' and trigger.id != 'presenca_off' }}"
       - condition: template
         value_template: "{{ usar_presenca and presenca_valida }}"
+      - condition: template
+        value_template: "{{ trigger.id == 'presenca_off' }}"
 
 action:
   - delay:
@@ -252,7 +258,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'off' or (usar_presenca and not presenca_valida) }}"
+            value_template: "{{ estado_final == 'off' or (usar_presenca and not presenca_valida) or trigger.id == 'presenca_off' }}"
         sequence:
           - service: homeassistant.turn_off
             target:
