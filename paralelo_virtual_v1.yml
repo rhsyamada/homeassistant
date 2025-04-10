@@ -59,16 +59,15 @@ trigger:
     entity_id: !input dispositivos_individuais
     attribute: color_temp
     id: 'temperatura_cor_alterada'
-  {% if sensores_movimento %}
   - platform: state
     entity_id: !input sensores_movimento
     to: 'on'
     id: 'movimento_detectado'
-  {% endif %}
 
 variables:
   grupo: !input grupo_zigbee
   transicao: !input transicao_suave
+  sensores_movimento: !input sensores_movimento
 
 condition: []
 
@@ -112,14 +111,14 @@ action:
             data:
               color_temp: "{{ state_attr(trigger.entity_id, 'color_temp') }}"
               transition: "{{ transicao }}"
-      {% if sensores_movimento %}
       - conditions:
           - condition: trigger
             id: 'movimento_detectado'
+          - condition: template
+            value_template: "{{ sensores_movimento | length > 0 }}"
         sequence:
           - service: light.turn_on
             target:
               entity_id: "{{ grupo }}"
             data:
               transition: "{{ transicao }}"
-      {% endif %}
