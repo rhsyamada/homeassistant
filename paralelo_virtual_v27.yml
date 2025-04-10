@@ -82,6 +82,16 @@ blueprint:
           domain: binary_sensor
           device_class: motion
           multiple: true
+    presenca_por_horario:
+      name: Validar Presença por Horário?
+      default: true
+      selector:
+        boolean: {}
+    presenca_por_iluminancia:
+      name: Priorizar Iluminância sobre Horário?
+      default: true
+      selector:
+        boolean: {}
     horario_presenca_1_inicio:
       name: Início Horário Presença 1
       default: "00:00"
@@ -136,6 +146,8 @@ variables:
   usar_circadiano: !input usar_circadiano
   usar_presenca: !input usar_presenca
   sensores_presenca: !input sensores_presenca
+  presenca_por_horario: !input presenca_por_horario
+  presenca_por_iluminancia: !input presenca_por_iluminancia
   horario1_ini: !input horario_presenca_1_inicio
   horario1_fim: !input horario_presenca_1_fim
   horario2_ini: !input horario_presenca_2_inicio
@@ -168,16 +180,16 @@ condition:
       - condition: and
         conditions:
           - condition: template
-            value_template: "{{ iluminancia_minima is not none }}"
+            value_template: "{{ presenca_por_iluminancia and iluminancia_minima is not none }}"
           - condition: numeric_state
             entity_id: !input sensor_iluminancia
             below: !input iluminancia_minima
       - condition: and
         conditions:
           - condition: template
-            value_template: "{{ usar_presenca }}"
+            value_template: "{{ usar_presenca and presenca_ativa }}"
           - condition: template
-            value_template: "{{ presenca_ativa and horario_ok }}"
+            value_template: "{{ not presenca_por_horario or horario_ok }}"
 
 action:
   - delay:
