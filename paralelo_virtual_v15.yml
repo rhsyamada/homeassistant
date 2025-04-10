@@ -1,9 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (Debounce Inteligente)
+  name: Paralelo Virtual Zigbee (Debounce Inteligente Corrigido)
   description: >
     Sincroniza o estado ON/OFF entre dispositivos Zigbee e um grupo de luzes.
     Compatível com o Editor Visual do Home Assistant.
-    Usa debounce inteligente: primeiro evento dispara na hora, repetidos são bloqueados por 500ms.
+    Usa debounce inteligente com desligamento garantido e modo seguro contra interrupções.
   domain: automation
   input:
     grupo_zigbee:
@@ -40,11 +40,11 @@ condition: []
 action:
   - choose:
       - conditions:
-          - condition: trigger
-            id: ligado
           - condition: state
             entity_id: !input debounce_flag
             state: "off"
+          - condition: trigger
+            id: ligado
         sequence:
           - service: input_boolean.turn_on
             target:
@@ -54,16 +54,13 @@ action:
               entity_id: !input grupo_zigbee
           - delay:
               milliseconds: 500
-          - service: input_boolean.turn_off
-            target:
-              entity_id: !input debounce_flag
 
       - conditions:
-          - condition: trigger
-            id: desligado
           - condition: state
             entity_id: !input debounce_flag
             state: "off"
+          - condition: trigger
+            id: desligado
         sequence:
           - service: input_boolean.turn_on
             target:
@@ -73,9 +70,11 @@ action:
               entity_id: !input grupo_zigbee
           - delay:
               milliseconds: 500
-          - service: input_boolean.turn_off
-            target:
-              entity_id: !input debounce_flag
 
-mode: restart
+  # Desligamento garantido do debounce
+  - service: input_boolean.turn_off
+    target:
+      entity_id: !input debounce_flag
+
+mode: queued
 max_exceeded: silent
