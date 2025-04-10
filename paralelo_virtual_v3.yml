@@ -20,6 +20,7 @@ blueprint:
               - switch
     sensores_movimento:
       name: Sensores de Movimento (Opcional)
+      description: Lista de sensores binários (motion) que podem acionar o grupo.
       default: []
       selector:
         target:
@@ -55,6 +56,9 @@ trigger:
     entity_id: !input dispositivos_individuais
     attribute: color_temp
     id: cor
+  - platform: event
+    event_type: state_changed
+    id: movimento_detectado
 
 variables:
   grupo: !input grupo_zigbee
@@ -107,19 +111,16 @@ action:
             target:
               entity_id: "{{ grupo }}"
 
-  - alias: Monitorar sensores de movimento (opcional)
-    if:
-      - condition: template
-        value_template: "{{ sensores_mov | length > 0 }}"
-    then:
-      - wait_for_trigger:
-          - platform: state
-            entity_id: !input sensores_movimento
-            to: 'on'
-        timeout: "00:00:01"
-        continue_on_timeout: false
-      - service: light.turn_on
-        data:
-          transition: "{{ transicao }}"
-        target:
-          entity_id: "{{ grupo }}"
+      - conditions:
+          - condition: trigger
+            id: movimento_detectado
+          - condition: template
+            value_template: >
+              {{ trigger.event.data.entity_id in sensores_mov and
+                 trigger.event.data.new_state.state == 'on' }}
+        sequence:
+          - service: light.turn_on
+            data:
+              transition: "{{ transicao }}"
+            target:
+              entity_id: "{{ grupo }}"
