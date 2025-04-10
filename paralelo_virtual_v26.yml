@@ -1,9 +1,9 @@
 blueprint:
-  name: "Paralelo Virtual Zigbee (Completo - Circadiano, Presença e Regras)"
+  name: "Paralelo Virtual Zigbee (Circadiano, Presença, Iluminância e Regras Avançadas)"
   description: >
-    Sincroniza dispositivos Zigbee com um grupo do Home Assistant.
-    Liga luzes com base em sensores de presença, horário ou iluminância.
-    Aplica temperatura e brilho padrão ou circadiano, com tempo de buffer e debounce.
+    Sincroniza dispositivos Zigbee com grupo do Home Assistant.
+    Liga luzes com base em presença, horários definidos ou iluminância.
+    Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
   domain: automation
   input:
     dispositivos_individuais:
@@ -69,20 +69,37 @@ blueprint:
       selector:
         entity:
           domain: input_number
-    sensor_presenca:
-      name: Sensor de Presença (Opcional)
-      default: null
+    usar_presenca:
+      name: Usar Sensor de Presença?
+      default: false
+      selector:
+        boolean: {}
+    sensores_presenca:
+      name: Sensores de Presença
+      default: []
       selector:
         entity:
           domain: binary_sensor
-    horario_inicio:
-      name: Início do Período Ativo
-      default: "18:00"
+          device_class: motion
+          multiple: true
+    horario_presenca_1_inicio:
+      name: Início Horário Presença 1
+      default: "00:00"
       selector:
         time: {}
-    horario_fim:
-      name: Fim do Período Ativo
+    horario_presenca_1_fim:
+      name: Fim Horário Presença 1
       default: "06:00"
+      selector:
+        time: {}
+    horario_presenca_2_inicio:
+      name: Início Horário Presença 2
+      default: "17:00"
+      selector:
+        time: {}
+    horario_presenca_2_fim:
+      name: Fim Horário Presença 2
+      default: "23:59"
       selector:
         time: {}
     iluminancia_minima:
@@ -109,47 +126,58 @@ trigger:
       - !input entidade_circadiana_temp
     id: circadiano
   - platform: state
-    entity_id: !input sensor_presenca
-    to: "on"
+    entity_id: !input sensores_presenca
     id: presenca
 
-condition:
-  - condition: or
-    conditions:
-      - condition: template
-        value_template: "{{ trigger.id != 'presenca' }}"
-      - condition: or
-        conditions:
-          - condition: template
-            value_template: >
-              {% set start = strptime((!input horario_inicio), '%H:%M').time() %}
-              {% set end = strptime((!input horario_fim), '%H:%M').time() %}
-              {% set now = now().time() %}
-              {% if start < end %}
-                {{ start <= now <= end }}
-              {% else %}
-                {{ now >= start or now <= end }}
-              {% endif %}
-          - condition: and
-            conditions:
-              - condition: template
-                value_template: "{{ !input iluminancia_minima is not none }}"
-              - condition: numeric_state
-                entity_id: !input sensor_iluminancia
-                below: !input iluminancia_minima
-
 variables:
-  estado_final: "{{ trigger.to_state.state if trigger.id not in ['circadiano', 'presenca'] else 'on' }}"
   grupo: !input grupo_zigbee
   intervalo: !input intervalo_buffer_ms
   usar_padrao: !input usar_config_padrao
   usar_circadiano: !input usar_circadiano
+  usar_presenca: !input usar_presenca
+  sensores_presenca: !input sensores_presenca
+  horario1_ini: !input horario_presenca_1_inicio
+  horario1_fim: !input horario_presenca_1_fim
+  horario2_ini: !input horario_presenca_2_inicio
+  horario2_fim: !input horario_presenca_2_fim
   brilho_padrao: !input brilho_default
   temp_padrao: !input temperatura_default
   entidade_brilho: !input entidade_circadiana_brilho
   entidade_temp: !input entidade_circadiana_temp
   brilho_circadiano: "{{ states(entidade_brilho) | int(0) }}"
   temp_circadiano: "{{ states(entidade_temp) | int(0) }}"
+  iluminancia_minima: !input iluminancia_minima
+  sensor_iluminancia: !input sensor_iluminancia
+  estado_final: >
+    {% if trigger.id in ['circadiano', 'presenca'] %}on{% else %}{{ trigger.to_state.state }}{% endif %}
+  horario_ok: >
+    {% set now = now().time() %}
+    {% set h1_start = strptime(horario1_ini, '%H:%M').time() %}
+    {% set h1_end = strptime(horario1_fim, '%H:%M').time() %}
+    {% set h2_start = strptime(horario2_ini, '%H:%M').time() %}
+    {% set h2_end = strptime(horario2_fim, '%H:%M').time() %}
+    {{ (h1_start <= now <= h1_end) or (h2_start <= now <= h2_end) or (h1_start > h1_end and (now >= h1_start or now <= h1_end)) or (h2_start > h2_end and (now >= h2_start or now <= h2_end)) }}
+  presenca_ativa: >
+    {{ sensores_presenca | select('is_state', 'on') | list | count > 0 }}
+
+condition:
+  - condition: or
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.id != 'presenca' }}"
+      - condition: and
+        conditions:
+          - condition: template
+            value_template: "{{ iluminancia_minima is not none }}"
+          - condition: numeric_state
+            entity_id: !input sensor_iluminancia
+            below: !input iluminancia_minima
+      - condition: and
+        conditions:
+          - condition: template
+            value_template: "{{ usar_presenca }}"
+          - condition: template
+            value_template: "{{ presenca_ativa and horario_ok }}"
 
 action:
   - delay:
@@ -167,8 +195,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: >
-              {{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is not none }}
+            value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is not none }}"
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -178,8 +205,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: >
-              {{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is none }}
+            value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is none }}"
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -188,8 +214,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: >
-              {{ estado_final == 'on' and usar_padrao and brilho_padrao is none and temp_padrao is not none }}
+            value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is none and temp_padrao is not none }}"
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -198,15 +223,15 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: >
-              {{ estado_final == 'on' and (not usar_padrao and not usar_circadiano) }}
+            value_template: "{{ estado_final == 'on' and (not usar_padrao and not usar_circadiano) }}"
         sequence:
           - service: homeassistant.turn_on
             target:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'off' }}"
+            value_template: >
+              {{ estado_final == 'off' or (usar_presenca and not presenca_ativa) }}
         sequence:
           - service: homeassistant.turn_off
             target:
