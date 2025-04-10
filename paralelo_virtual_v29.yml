@@ -6,22 +6,155 @@ blueprint:
     Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
   domain: automation
   input:
-    # (mantido conforme está...)
-    # ... parâmetros omitidos aqui para brevidade (já presentes no canvas) ...
+    dispositivos_individuais:
+      name: Dispositivos Individuais (gatilhos)
+      selector:
+        entity:
+          domain:
+            - light
+            - switch
+          multiple: true
+
+    grupo_zigbee:
+      name: Grupo de Luzes ou Switches (HA)
+      selector:
+        entity:
+          domain:
+            - light
+            - switch
+
+    intervalo_buffer_ms:
+      name: Intervalo de Buffer (ms)
+      default: 1000
+      selector:
+        number:
+          min: 200
+          max: 5000
+          step: 100
+          unit_of_measurement: ms
+
+    usar_config_padrao:
+      name: Aplicar Brilho e Temperatura Padrão?
+      default: false
+      selector:
+        boolean: {}
+
+    brilho_default:
+      name: Brilho Padrão
+      default: null
+      selector:
+        number:
+          min: 1
+          max: 255
+          step: 1
+
+    temperatura_default:
+      name: Temperatura de Cor Padrão
+      default: null
+      selector:
+        number:
+          min: 153
+          max: 500
+          step: 1
+          unit_of_measurement: mired
+
+    usar_circadiano:
+      name: Usar Ciclo Circadiano?
+      default: false
+      selector:
+        boolean: {}
+
+    entidade_circadiana_brilho:
+      name: Entidade do Brilho Circadiano
+      default: input_number.circadian_brightness
+      selector:
+        entity:
+          domain: input_number
+
+    entidade_circadiana_temp:
+      name: Entidade da Temperatura Circadiana
+      default: input_number.circadian_color_temp
+      selector:
+        entity:
+          domain: input_number
+
+    usar_presenca:
+      name: Usar Sensor de Presença?
+      default: false
+      selector:
+        boolean: {}
+
+    sensores_presenca:
+      name: Sensores de Presença
+      default: []
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+          multiple: true
+
+    presenca_por_horario:
+      name: Validar Presença por Horário?
+      default: true
+      selector:
+        boolean: {}
+
+    presenca_por_iluminancia:
+      name: Priorizar Iluminância sobre Horário?
+      default: true
+      selector:
+        boolean: {}
+
+    horario_presenca_1_inicio:
+      name: Início Horário Presença 1
+      default: "00:00"
+      selector:
+        time: {}
+
+    horario_presenca_1_fim:
+      name: Fim Horário Presença 1
+      default: "06:00"
+      selector:
+        time: {}
+
+    horario_presenca_2_inicio:
+      name: Início Horário Presença 2
+      default: "17:00"
+      selector:
+        time: {}
+
+    horario_presenca_2_fim:
+      name: Fim Horário Presença 2
+      default: "23:59"
+      selector:
+        time: {}
+
+    iluminancia_minima:
+      name: Iluminância Mínima (lux)
+      default: null
+      selector:
+        number:
+          min: 0
+          max: 1000
+          unit_of_measurement: lux
+
+    sensor_iluminancia:
+      name: Sensor de Iluminância (Opcional)
+      default: null
+      selector:
+        entity:
+          domain: sensor
 
 trigger:
-  # Disparo por alteração de estado de qualquer dispositivo monitorado
   - platform: state
     entity_id: !input dispositivos_individuais
 
-  # Disparo por alteração das entidades circadianas (ajusta brilho/temperatura automaticamente)
   - platform: state
     entity_id:
       - !input entidade_circadiana_brilho
       - !input entidade_circadiana_temp
     id: circadiano
 
-  # Disparo por sensores de presença
   - platform: state
     entity_id: !input sensores_presenca
     id: presenca
@@ -47,12 +180,8 @@ variables:
   temp_circadiano: "{{ states(entidade_temp) | int(0) }}"
   iluminancia_minima: !input iluminancia_minima
   sensor_iluminancia: !input sensor_iluminancia
-
-  # Determina o estado a ser usado com base no gatilho
   estado_final: >
     {% if trigger.id in ['circadiano', 'presenca'] %}on{% else %}{{ trigger.to_state.state }}{% endif %}
-
-  # Valida se o horário atual está dentro de um dos períodos permitidos
   horario_ok: >
     {% set now = now().time() %}
     {% set h1_start = strptime(horario1_ini, '%H:%M').time() %}
@@ -60,19 +189,14 @@ variables:
     {% set h2_start = strptime(horario2_ini, '%H:%M').time() %}
     {% set h2_end = strptime(horario2_fim, '%H:%M').time() %}
     {{ (h1_start <= now <= h1_end) or (h2_start <= now <= h2_end) or (h1_start > h1_end and (now >= h1_start or now <= h1_end)) or (h2_start > h2_end and (now >= h2_start or now <= h2_end)) }}
-
-  # Checa se algum sensor de presença está ativo
   presenca_ativa: >
     {{ sensores_presenca | select('is_state', 'on') | list | count > 0 }}
 
 condition:
   - condition: or
     conditions:
-      # Qualquer evento que não seja de presença
       - condition: template
         value_template: "{{ trigger.id != 'presenca' }}"
-
-      # Iluminância priorizada e dentro do limite
       - condition: and
         conditions:
           - condition: template
@@ -80,8 +204,6 @@ condition:
           - condition: numeric_state
             entity_id: !input sensor_iluminancia
             below: !input iluminancia_minima
-
-      # Presença detectada e horário permitido (se configurado)
       - condition: and
         conditions:
           - condition: template
@@ -92,9 +214,7 @@ condition:
 action:
   - delay:
       milliseconds: !input intervalo_buffer_ms
-
   - choose:
-      # Acionamento com valores circadianos
       - conditions:
           - condition: template
             value_template: "{{ estado_final == 'on' and usar_circadiano }}"
@@ -105,8 +225,6 @@ action:
               color_temp: "{{ temp_circadiano }}"
             target:
               entity_id: "{{ grupo }}"
-
-      # Acionamento com brilho e temperatura padrão
       - conditions:
           - condition: template
             value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is not none }}"
@@ -117,8 +235,6 @@ action:
               color_temp: "{{ temp_padrao }}"
             target:
               entity_id: "{{ grupo }}"
-
-      # Apenas brilho padrão
       - conditions:
           - condition: template
             value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is none }}"
@@ -128,8 +244,6 @@ action:
               brightness: "{{ brilho_padrao }}"
             target:
               entity_id: "{{ grupo }}"
-
-      # Apenas temperatura padrão
       - conditions:
           - condition: template
             value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is none and temp_padrao is not none }}"
@@ -139,8 +253,6 @@ action:
               color_temp: "{{ temp_padrao }}"
             target:
               entity_id: "{{ grupo }}"
-
-      # Ligamento simples (sem temperatura/brilho)
       - conditions:
           - condition: template
             value_template: "{{ estado_final == 'on' and (not usar_padrao and not usar_circadiano) }}"
@@ -148,8 +260,6 @@ action:
           - service: homeassistant.turn_on
             target:
               entity_id: "{{ grupo }}"
-
-      # Desligamento por ausência
       - conditions:
           - condition: template
             value_template: "{{ estado_final == 'off' or (usar_presenca and not presenca_ativa) }}"
