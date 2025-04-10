@@ -1,8 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (HA - Com Partida Suave)
+  name: Paralelo Virtual Zigbee (HA - Com Brilho e Temperatura)
   description: >
     Sincroniza dispositivos Zigbee com um grupo do Home Assistant.
-    Usa buffer para descartar eventos intermediários e só executa o último estado com animação de partida suave.
+    Usa buffer para descartar eventos intermediários e aplica o último estado.
+    Permite definir brilho e temperatura padrão ao ligar o grupo.
   domain: automation
   input:
     dispositivos_individuais:
@@ -30,16 +31,24 @@ blueprint:
           max: 5000
           step: 100
           unit_of_measurement: ms
-    tempo_transicao:
-      name: Tempo de Transição (Partida Suave)
-      description: Duração da animação ao ligar o grupo
-      default: 0
+    brilho_default:
+      name: Brilho Padrão (Opcional)
+      default: null
       selector:
         number:
-          min: 0
-          max: 10
+          min: 1
+          max: 255
+          mode: slider
           step: 1
-          unit_of_measurement: s
+    temperatura_default:
+      name: Temperatura de Cor Padrão (Opcional)
+      default: null
+      selector:
+        number:
+          min: 153
+          max: 500
+          step: 1
+          unit_of_measurement: mired
 
 trigger:
   - platform: state
@@ -53,7 +62,8 @@ variables:
   estado_final: "{{ trigger.to_state.state }}"
   grupo: !input grupo_zigbee
   intervalo: !input intervalo_buffer_ms
-  transicao: !input tempo_transicao
+  brilho: !input brilho_default
+  cor_temp: !input temperatura_default
 
 action:
   - delay:
@@ -65,7 +75,12 @@ action:
         sequence:
           - service: homeassistant.turn_on
             data:
-              transition: "{{ transicao }}"
+              {% if brilho is not none %}
+              brightness: "{{ brilho }}"
+              {% endif %}
+              {% if cor_temp is not none %}
+              color_temp: "{{ cor_temp }}"
+              {% endif %}
             target:
               entity_id: "{{ grupo }}"
       - conditions:
