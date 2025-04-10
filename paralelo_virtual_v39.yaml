@@ -157,12 +157,15 @@ variables:
   estado_final: >
     {% if trigger.id in ['circadiano', 'presenca'] %}on{% else %}{{ trigger.to_state.state }}{% endif %}
   horario_ok: >
-    {% set now = now().time() %}
-    {% set h1_start = strptime(horario1_ini, '%H:%M:%S').time() if ":" in horario1_ini else strptime(horario1_ini, '%H:%M').time() %}
-    {% set h1_end = strptime(horario1_fim, '%H:%M:%S').time() if ":" in horario1_fim else strptime(horario1_fim, '%H:%M').time() %}
-    {% set h2_start = strptime(horario2_ini, '%H:%M:%S').time() if ":" in horario2_ini else strptime(horario2_ini, '%H:%M').time() %}
-    {% set h2_end = strptime(horario2_fim, '%H:%M:%S').time() if ":" in horario2_fim else strptime(horario2_fim, '%H:%M').time() %}
-    {{ (h1_start <= now <= h1_end) or (h2_start <= now <= h2_end) or (h1_start > h1_end and (now >= h1_start or now <= h1_end)) or (h2_start > h2_end and (now >= h2_start or now <= h2_end)) }}
+    {% set now = now().strftime('%H:%M:%S') %}
+    {% set h1_start = horario1_ini + (':00' if horario1_ini|length == 5 else '') %}
+    {% set h1_end = horario1_fim + (':00' if horario1_fim|length == 5 else '') %}
+    {% set h2_start = horario2_ini + (':00' if horario2_ini|length == 5 else '') %}
+    {% set h2_end = horario2_fim + (':00' if horario2_fim|length == 5 else '') %}
+    {% set in_range = (h1_start <= now <= h1_end) or (h2_start <= now <= h2_end) %}
+    {% set wrap1 = h1_start > h1_end and (now >= h1_start or now <= h1_end) %}
+    {% set wrap2 = h2_start > h2_end and (now >= h2_start or now <= h2_end) %}
+    {{ in_range or wrap1 or wrap2 }}
   presenca_ativa: >
     {{ sensores_presenca | select('is_state', 'on') | list | count > 0 }}
   presenca_valida: >
