@@ -42,8 +42,9 @@ variables:
   grupo: !input grupo_zigbee
   transicao: !input transicao_suave
   sensores_mov: !input sensores_movimento
+  dispositivos_raw: !input dispositivos_individuais
   entidades: >
-    {{ expand(!input dispositivos_individuais) | map(attribute='entity_id') | list }}
+    {{ expand(dispositivos_raw) | map(attribute='entity_id') | list }}
 
 trigger:
   - platform: state
