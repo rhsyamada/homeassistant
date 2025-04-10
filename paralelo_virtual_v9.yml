@@ -26,7 +26,8 @@ variables:
   grupo: !input grupo_zigbee
   dispositivos_raw: !input dispositivos_individuais
   entidades: >
-    {{ expand(dispositivos_raw) | map(attribute='entity_id') | list }}
+    {% set ids = dispositivos_raw.entity_id if dispositivos_raw.entity_id is iterable else [dispositivos_raw.entity_id] %}
+    {{ ids }}
 
 trigger:
   - platform: state
