@@ -124,11 +124,11 @@ blueprint:
 
     tempo_luz_acesa:
       name: Tempo que a luz deve permanecer acesa após detectar presença (segundos)
-      default: 30
+      default: 0
       selector:
         number:
           min: 0
-          max: 300
+          max: 3600
           unit_of_measurement: s
 
 trigger:
@@ -144,12 +144,8 @@ trigger:
   - platform: state
     entity_id: !input sensores_presenca
     to: 'on'
+    from: 'off'
     id: presenca
-
-  - platform: state
-    entity_id: !input sensores_presenca
-    to: 'off'
-    id: presenca_off
 
 variables:
   grupo: !input grupo_zigbee
@@ -177,7 +173,7 @@ variables:
     {% set h1_start = horario1_ini + (':00' if horario1_ini|length == 5 else '') %}
     {% set h1_end = horario1_fim + (':00' if horario1_fim|length == 5 else '') %}
     {% set h2_start = horario2_ini + (':00' if horario2_ini|length == 5 else '') %}
-    {% set h2_end = horario2_fim + (':00' if horario2_fim|length == 5 else '') %}
+    {% set h2_end = horario_presenca_2_fim + (':00' if horario_presenca_2_fim|length == 5 else '') %}
     {% set in_range = (h1_start <= now <= h1_end) or (h2_start <= now <= h2_end) %}
     {% set wrap1 = h1_start > h1_end and (now >= h1_start or now <= h1_end) %}
     {% set wrap2 = h2_start > h2_end and (now >= h2_start or now <= h2_end) %}
@@ -191,11 +187,9 @@ condition:
   - condition: or
     conditions:
       - condition: template
-        value_template: "{{ trigger.id != 'presenca' and trigger.id != 'presenca_off' }}"
+        value_template: "{{ trigger.id != 'presenca' }}"
       - condition: template
         value_template: "{{ usar_presenca and presenca_valida }}"
-      - condition: template
-        value_template: "{{ trigger.id == 'presenca_off' }}"
 
 action:
   - delay:
@@ -251,14 +245,21 @@ action:
           - condition: template
             value_template: "{{ tempo_luz_acesa > 0 and trigger.id == 'presenca' }}"
         sequence:
-          - delay:
+          - wait_for_trigger:
+              - platform: state
+                entity_id: !input sensores_presenca
+                to: 'off'
+            timeout:
               seconds: "{{ tempo_luz_acesa }}"
+              continue_on_timeout: true
+          - condition: template
+            value_template: "{{ sensores_presenca | select('is_state', 'off') | list | count == sensores_presenca | count }}"
           - service: homeassistant.turn_off
             target:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'off' or (usar_presenca and not presenca_valida) or trigger.id == 'presenca_off' }}"
+            value_template: "{{ estado_final == 'off' or (usar_presenca and not presenca_valida) }}"
         sequence:
           - service: homeassistant.turn_off
             target:
