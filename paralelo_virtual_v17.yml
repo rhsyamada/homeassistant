@@ -1,9 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (À Prova de Loop)
+  name: Paralelo Virtual Zigbee (Debounce Configurável)
   description: >
     Sincroniza o estado ON/OFF entre dispositivos Zigbee e um grupo de luzes.
     Compatível com o Editor Visual do Home Assistant.
-    Inclui debounce inteligente, modo seguro contra interrupções e filtro de eventos para evitar loop infinito.
+    Inclui debounce inteligente com tempo ajustável, proteção contra loops e modo seguro.
   domain: automation
   input:
     grupo_zigbee:
@@ -24,6 +24,16 @@ blueprint:
       selector:
         entity:
           domain: input_boolean
+    tempo_debounce:
+      name: Tempo de Debounce (em milissegundos)
+      description: Tempo de bloqueio após uma ação para evitar loops
+      default: 1500
+      selector:
+        number:
+          min: 100
+          max: 5000
+          step: 100
+          unit_of_measurement: ms
 
 trigger:
   - platform: state
@@ -56,7 +66,7 @@ action:
             target:
               entity_id: !input grupo_zigbee
           - delay:
-              milliseconds: 500
+              milliseconds: !input tempo_debounce
 
       - conditions:
           - condition: state
@@ -75,9 +85,8 @@ action:
             target:
               entity_id: !input grupo_zigbee
           - delay:
-              milliseconds: 500
+              milliseconds: !input tempo_debounce
 
-  # Desligamento garantido do debounce
   - service: input_boolean.turn_off
     target:
       entity_id: !input debounce_flag
