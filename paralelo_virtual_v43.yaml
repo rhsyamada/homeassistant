@@ -128,7 +128,7 @@ blueprint:
       selector:
         number:
           min: 0
-          max: 60
+          max: 3600
           step: 1
           unit_of_measurement: s
 
@@ -244,11 +244,14 @@ action:
           - condition: template
             value_template: "{{ tempo_luz_acesa | int(0) > 0 and trigger.id == 'presenca' }}"
         sequence:
-          - wait_for_trigger:
-              - platform: state
-                entity_id: !input sensores_presenca
-                to: 'on'
-            timeout:
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ presenca_ativa }}"
+              sequence:
+                - delay:
+                    seconds: 1
+          - delay:
               seconds: "{{ tempo_luz_acesa | int }}"
           - condition: template
             value_template: "{{ sensores_presenca | select('is_state', 'off') | list | count == sensores_presenca | count }}"
