@@ -1,9 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (HA - Circadiano e Brilho/Temperatura Opcionais)
+  name: Paralelo Virtual Zigbee (HA - Circadiano com Entidades Personalizadas)
   description: >
     Sincroniza dispositivos Zigbee com um grupo do Home Assistant.
     Usa buffer para descartar eventos intermediários e aplica o último estado.
-    Suporte ao ciclo circadiano (brilho e temperatura baseados em entidades externas).
+    Suporte ao ciclo circadiano com entidades configuráveis para brilho e temperatura.
   domain: automation
   input:
     dispositivos_individuais:
@@ -23,7 +23,6 @@ blueprint:
             - switch
     intervalo_buffer_ms:
       name: Intervalo de Buffer (ms)
-      description: Tempo de espera para aplicar o último estado após uma alternância
       default: 1000
       selector:
         number:
@@ -58,14 +57,26 @@ blueprint:
       default: false
       selector:
         boolean: {}
+    entidade_circadiana_brilho:
+      name: Entidade do Brilho Circadiano
+      default: input_number.circadian_brightness
+      selector:
+        entity:
+          domain: input_number
+    entidade_circadiana_temp:
+      name: Entidade da Temperatura Circadiana
+      default: input_number.circadian_color_temp
+      selector:
+        entity:
+          domain: input_number
 
 trigger:
   - platform: state
     entity_id: !input dispositivos_individuais
   - platform: state
     entity_id:
-      - input_number.circadian_brightness
-      - input_number.circadian_color_temp
+      - !input entidade_circadiana_brilho
+      - !input entidade_circadiana_temp
     id: circadiano
 
 condition:
@@ -82,8 +93,10 @@ variables:
   usar_circadiano: !input usar_circadiano
   brilho_padrao: !input brilho_default
   temp_padrao: !input temperatura_default
-  brilho_circadiano: "{{ states('input_number.circadian_brightness') | int(0) }}"
-  temp_circadiano: "{{ states('input_number.circadian_color_temp') | int(0) }}"
+  entidade_brilho: !input entidade_circadiana_brilho
+  entidade_temp: !input entidade_circadiana_temp
+  brilho_circadiano: "{{ states(entidade_brilho) | int(0) }}"
+  temp_circadiano: "{{ states(entidade_temp) | int(0) }}"
 
 action:
   - delay:
