@@ -13,20 +13,11 @@ blueprint:
     dispositivos_individuais:
       name: Dispositivos Individuais Zigbee
       selector:
-        target:
-          entity:
-            domain:
-              - light
-              - switch
-
-mode: restart
-max_exceeded: silent
-
-trigger_variables:
-  dispositivos_raw: !input dispositivos_individuais
-  entidades: >
-    {% set ids = dispositivos_raw.entity_id if dispositivos_raw.entity_id is iterable else [dispositivos_raw.entity_id] %}
-    {{ ids }}
+        entity:
+          domain:
+            - light
+            - switch
+          multiple: true
 
 trigger:
   - platform: state
@@ -57,3 +48,6 @@ action:
           - service: light.turn_off
             target:
               entity_id: !input grupo_zigbee
+
+mode: restart
+max_exceeded: silent
