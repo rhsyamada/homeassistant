@@ -124,11 +124,11 @@ blueprint:
 
     tempo_luz_acesa:
       name: Tempo que a luz deve permanecer acesa após detectar presença (segundos)
-      default: 30
+      default: 0
       selector:
         number:
-          min: 1
-          max: 60
+          min: 0
+          max: 3600
           step: 1
           unit_of_measurement: s
 
@@ -251,7 +251,7 @@ action:
                 entity_id: !input sensores_presenca
                 to: 'off'
             timeout:
-              seconds: "{{ tempo_luz_acesa | int(0) }}"
+              seconds: {{ tempo_luz_acesa | int(0) }}
               continue_on_timeout: true
           - condition: template
             value_template: "{{ sensores_presenca | select('is_state', 'off') | list | count == sensores_presenca | count }}"
