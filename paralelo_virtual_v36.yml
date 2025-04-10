@@ -1,8 +1,8 @@
 blueprint:
-  name: "Paralelo Virtual Zigbee (Circadiano, Presença, Iluminância e Regras Avançadas)"
+  name: "Paralelo Virtual Zigbee (Circadiano, Presença, Regras Avançadas)"
   description: >
     Sincroniza dispositivos Zigbee com grupo do Home Assistant.
-    Liga luzes com base em presença, horários definidos ou iluminância.
+    Liga luzes com base em presença e horários definidos.
     Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
   domain: automation
   input:
@@ -122,28 +122,6 @@ blueprint:
       selector:
         time: {}
 
-    presenca_por_iluminancia:
-      name: Priorizar Iluminância sobre Horário?
-      default: false
-      selector:
-        boolean: {}
-
-    iluminancia_minima:
-      name: Iluminância Mínima (lux)
-      default: null
-      selector:
-        number:
-          min: 0
-          max: 1000
-          unit_of_measurement: lux
-
-    sensor_iluminancia:
-      name: Sensor de Iluminância (Opcional)
-      default: null
-      selector:
-        entity:
-          domain: sensor
-
 trigger:
   - platform: state
     entity_id: !input dispositivos_individuais
@@ -166,7 +144,6 @@ variables:
   usar_presenca: !input usar_presenca
   sensores_presenca: !input sensores_presenca
   presenca_por_horario: !input presenca_por_horario
-  presenca_por_iluminancia: !input presenca_por_iluminancia
   horario1_ini: !input horario_presenca_1_inicio
   horario1_fim: !input horario_presenca_1_fim
   horario2_ini: !input horario_presenca_2_inicio
@@ -177,8 +154,6 @@ variables:
   entidade_temp: !input entidade_circadiana_temp
   brilho_circadiano: "{{ states(entidade_brilho) | int(0) }}"
   temp_circadiano: "{{ states(entidade_temp) | int(0) }}"
-  iluminancia_minima: !input iluminancia_minima
-  sensor_iluminancia: !input sensor_iluminancia
   estado_final: >
     {% if trigger.id in ['circadiano', 'presenca'] %}on{% else %}{{ trigger.to_state.state }}{% endif %}
   horario_ok: >
@@ -196,14 +171,6 @@ condition:
     conditions:
       - condition: template
         value_template: "{{ trigger.id != 'presenca' }}"
-      - condition: and
-        conditions:
-          - condition: template
-            value_template: >
-              {{ presenca_por_iluminancia and sensor_iluminancia is not none and iluminancia_minima is not none }}
-          - condition: numeric_state
-            entity_id: !input sensor_iluminancia
-            below: !input iluminancia_minima
       - condition: and
         conditions:
           - condition: template
