@@ -1,4 +1,4 @@
-""blueprint:
+blueprint:
   name: "Paralelo Virtual Zigbee (Circadiano, Presença, Regras Avançadas)"
   description: >
     Sincroniza dispositivos Zigbee com grupo do Home Assistant.
