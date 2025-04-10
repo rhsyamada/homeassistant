@@ -1,7 +1,6 @@
 ""blueprint:
   name: "Paralelo Virtual Zigbee (Circadiano, Presença, Regras Avançadas)"
   description: >
-    14:03
     Sincroniza dispositivos Zigbee com grupo do Home Assistant.
     Liga luzes com base em presença e horários definidos.
     Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
@@ -128,8 +127,8 @@
       default: 0
       selector:
         number:
-          min: 0
-          max: 60
+          min: 60
+          max: 100
           step: 1
           unit_of_measurement: s
 
@@ -245,14 +244,17 @@ action:
           - condition: template
             value_template: "{{ tempo_luz_acesa | int(0) > 0 and trigger.id == 'presenca' }}"
         sequence:
-          - wait_for_trigger:
-              - platform: state
-                entity_id: !input sensores_presenca
-                to: "off"
-                for:
-                  seconds: "{{ tempo_luz_acesa | int }}"
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{ sensores_presenca | select('is_state', 'on') | list | count > 0 }}"
+              sequence:
+                - delay:
+                    seconds: 1
+          - delay:
+              seconds: "{{ tempo_luz_acesa | int }}"
           - condition: template
-            value_template: "{{ sensores_presenca | select('is_state', 'off') | list | count == sensores_presenca | count }}"
+            value_template: "{{ sensores_presenca | select('is_state', 'on') | list | count == 0 }}"
           - service: homeassistant.turn_off
             target:
               entity_id: "{{ grupo }}"
