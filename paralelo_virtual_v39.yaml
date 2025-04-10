@@ -122,6 +122,15 @@ blueprint:
       selector:
         time: {}
 
+    tempo_luz_acesa:
+      name: Tempo que a luz deve permanecer acesa após detectar presença (segundos)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: s
+
 trigger:
   - platform: state
     entity_id: !input dispositivos_individuais
@@ -152,6 +161,7 @@ variables:
   temp_padrao: !input temperatura_default
   entidade_brilho: !input entidade_circadiana_brilho
   entidade_temp: !input entidade_circadiana_temp
+  tempo_luz_acesa: !input tempo_luz_acesa
   brilho_circadiano: "{{ states(entidade_brilho) | int(0) }}"
   temp_circadiano: "{{ states(entidade_temp) | int(0) }}"
   estado_final: >
@@ -161,7 +171,7 @@ variables:
     {% set h1_start = horario1_ini + (':00' if horario1_ini|length == 5 else '') %}
     {% set h1_end = horario1_fim + (':00' if horario1_fim|length == 5 else '') %}
     {% set h2_start = horario2_ini + (':00' if horario2_ini|length == 5 else '') %}
-    {% set h2_end = horario2_fim + (':00' if horario2_fim|length == 5 else '') %}
+    {% set h2_end = horario_presenca_2_fim + (':00' if horario_presenca_2_fim|length == 5 else '') %}
     {% set in_range = (h1_start <= now <= h1_end) or (h2_start <= now <= h2_end) %}
     {% set wrap1 = h1_start > h1_end and (now >= h1_start or now <= h1_end) %}
     {% set wrap2 = h2_start > h2_end and (now >= h2_start or now <= h2_end) %}
@@ -226,6 +236,16 @@ action:
             value_template: "{{ estado_final == 'on' and (not usar_presenca or presenca_valida) and (not usar_padrao and not usar_circadiano) }}"
         sequence:
           - service: homeassistant.turn_on
+            target:
+              entity_id: "{{ grupo }}"
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ tempo_luz_acesa > 0 and estado_final == 'on' and presenca_valida }}"
+        sequence:
+          - delay:
+              seconds: "{{ tempo_luz_acesa }}"
+          - service: homeassistant.turn_off
             target:
               entity_id: "{{ grupo }}"
       - conditions:
