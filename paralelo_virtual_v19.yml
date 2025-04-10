@@ -1,18 +1,18 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (Dispositivo para Grupo)
+  name: Paralelo Virtual Zigbee2MQTT (Desempenho Total, Sem Loop)
   description: >
-    Sincroniza o estado ON/OFF de dispositivos Zigbee com um grupo de luzes.
-    Ação unidirecional: mudanças nos dispositivos individuais afetam o grupo, mas não o contrário.
-    Previne qualquer possibilidade de loop infinito.
+    Sincroniza dispositivos Zigbee com grupo MQTT de forma unidirecional.
+    Usa dispositivos individuais como gatilho e grupo nativo Zigbee2MQTT como destino.
+    Não monitora o grupo. Sem debounce. Sem loop. Alta performance.
   domain: automation
   input:
     grupo_zigbee:
-      name: Grupo de Dispositivos Zigbee
+      name: Grupo Zigbee2MQTT (destino)
       selector:
         entity:
           domain: light
     dispositivos_individuais:
-      name: Dispositivos Individuais Zigbee (fonte de controle)
+      name: Dispositivos Individuais (fonte de eventos)
       selector:
         entity:
           domain:
@@ -25,12 +25,16 @@ trigger:
     entity_id: !input dispositivos_individuais
     to: "on"
     id: ligado
+
   - platform: state
     entity_id: !input dispositivos_individuais
     to: "off"
     id: desligado
 
-condition: []
+condition:
+  - condition: template
+    value_template: >
+      {{ trigger.to_state.state != trigger.from_state.state }}
 
 action:
   - choose:
@@ -50,5 +54,4 @@ action:
             target:
               entity_id: !input grupo_zigbee
 
-mode: queued
-max_exceeded: silent
+mode: single
