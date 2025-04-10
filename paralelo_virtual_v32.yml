@@ -1,24 +1,27 @@
 blueprint:
   name: "Paralelo Virtual Zigbee (Circadiano, Presença, Iluminância e Regras Avançadas)"
   description: >
-    🔄 Sincroniza dispositivos Zigbee com grupo do Home Assistant.
-    💡 Liga luzes com base em presença, horários definidos ou iluminância.
-    🌅 Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
-    ✅ Validação inteligente dos sensores binários de presença.
+    Sincroniza dispositivos Zigbee com grupo do Home Assistant.
+    Liga luzes com base em presença, horários definidos ou iluminância.
+    Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
   domain: automation
   input:
     dispositivos_individuais:
       name: Dispositivos Individuais (gatilhos)
       selector:
         entity:
-          domain: [light, switch]
+          domain:
+            - light
+            - switch
           multiple: true
 
     grupo_zigbee:
       name: Grupo de Luzes ou Switches (HA)
       selector:
         entity:
-          domain: [light, switch]
+          domain:
+            - light
+            - switch
 
     intervalo_buffer_ms:
       name: Intervalo de Buffer (ms)
@@ -196,7 +199,8 @@ condition:
       - condition: and
         conditions:
           - condition: template
-            value_template: "{{ presenca_por_iluminancia and iluminancia_minima is not none }}"
+            value_template: >
+              {{ presenca_por_iluminancia and sensor_iluminancia is not none and iluminancia_minima is not none }}
           - condition: numeric_state
             entity_id: !input sensor_iluminancia
             below: !input iluminancia_minima
