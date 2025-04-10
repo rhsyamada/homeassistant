@@ -1,9 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (HA - Com Brilho e Temperatura)
+  name: Paralelo Virtual Zigbee (HA - Brilho e Temperatura Opcionais)
   description: >
     Sincroniza dispositivos Zigbee com um grupo do Home Assistant.
     Usa buffer para descartar eventos intermediários e aplica o último estado.
-    Permite definir brilho e temperatura padrão ao ligar o grupo.
+    Permite aplicar brilho e temperatura ao ligar, se definidos.
   domain: automation
   input:
     dispositivos_individuais:
@@ -71,16 +71,37 @@ action:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' }}"
+            value_template: "{{ estado_final == 'on' and brilho is not none and cor_temp is not none }}"
         sequence:
           - service: homeassistant.turn_on
             data:
-              {% if brilho is not none %}
               brightness: "{{ brilho }}"
-              {% endif %}
-              {% if cor_temp is not none %}
               color_temp: "{{ cor_temp }}"
-              {% endif %}
+            target:
+              entity_id: "{{ grupo }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ estado_final == 'on' and brilho is not none and cor_temp is none }}"
+        sequence:
+          - service: homeassistant.turn_on
+            data:
+              brightness: "{{ brilho }}"
+            target:
+              entity_id: "{{ grupo }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ estado_final == 'on' and brilho is none and cor_temp is not none }}"
+        sequence:
+          - service: homeassistant.turn_on
+            data:
+              color_temp: "{{ cor_temp }}"
+            target:
+              entity_id: "{{ grupo }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ estado_final == 'on' and brilho is none and cor_temp is none }}"
+        sequence:
+          - service: homeassistant.turn_on
             target:
               entity_id: "{{ grupo }}"
       - conditions:
