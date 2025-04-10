@@ -1,8 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (Simples)
+  name: Paralelo Virtual Zigbee (Simples com Debounce)
   description: >
     Sincroniza o estado ON/OFF entre dispositivos Zigbee e um grupo de luzes.
     Compatível com o Editor Visual do Home Assistant.
+    Inclui proteção contra loop com debounce de 1 segundo.
   domain: automation
   input:
     grupo_zigbee:
@@ -23,10 +24,14 @@ trigger:
   - platform: state
     entity_id: !input dispositivos_individuais
     to: "on"
+    for:
+      seconds: 1
     id: ligado
   - platform: state
     entity_id: !input dispositivos_individuais
     to: "off"
+    for:
+      seconds: 1
     id: desligado
 
 condition: []
