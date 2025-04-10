@@ -1,7 +1,7 @@
 blueprint:
   name: "Paralelo Virtual Zigbee (Circadiano, Presença, Regras Avançadas)"
   description: >
-  1233
+    1233
     Sincroniza dispositivos Zigbee com grupo do Home Assistant.
     Liga luzes com base em presença e horários definidos.
     Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
