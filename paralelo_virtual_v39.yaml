@@ -124,11 +124,11 @@ blueprint:
 
     tempo_luz_acesa:
       name: Tempo que a luz deve permanecer acesa após detectar presença (segundos)
-      default: 30
+      default: 0
       selector:
         number:
           min: 0
-          max: 300
+          max: 3600
           unit_of_measurement: s
 
 trigger:
@@ -144,6 +144,7 @@ trigger:
   - platform: state
     entity_id: !input sensores_presenca
     to: 'on'
+    from: 'off'
     id: presenca
 
 variables:
@@ -188,7 +189,7 @@ condition:
       - condition: template
         value_template: "{{ trigger.id != 'presenca' }}"
       - condition: template
-        value_template: "{{ usar_presenca }}"
+        value_template: "{{ usar_presenca and presenca_valida }}"
 
 action:
   - delay:
@@ -196,7 +197,7 @@ action:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and (not usar_presenca or presenca_valida) and usar_circadiano }}"
+            value_template: "{{ estado_final == 'on' and usar_circadiano }}"
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -206,7 +207,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and (not usar_presenca or presenca_valida) and usar_padrao and brilho_padrao is not none and temp_padrao is not none }}"
+            value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is not none }}"
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -216,7 +217,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and (not usar_presenca or presenca_valida) and usar_padrao and brilho_padrao is not none and temp_padrao is none }}"
+            value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is none }}"
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -225,7 +226,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and (not usar_presenca or presenca_valida) and usar_padrao and brilho_padrao is none and temp_padrao is not none }}"
+            value_template: "{{ estado_final == 'on' and usar_padrao and brilho_padrao is none and temp_padrao is not none }}"
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -234,7 +235,7 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and (not usar_presenca or presenca_valida) and (not usar_padrao and not usar_circadiano) }}"
+            value_template: "{{ estado_final == 'on' and (not usar_padrao and not usar_circadiano) }}"
         sequence:
           - service: homeassistant.turn_on
             target:
