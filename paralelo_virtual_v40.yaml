@@ -250,7 +250,7 @@ action:
                 entity_id: !input sensores_presenca
                 to: 'off'
             timeout:
-              seconds: "{{ tempo_luz_acesa }}"
+              seconds: !input tempo_luz_acesa
               continue_on_timeout: true
           - condition: template
             value_template: "{{ sensores_presenca | select('is_state', 'off') | list | count == sensores_presenca | count }}"
