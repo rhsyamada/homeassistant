@@ -1,8 +1,8 @@
 blueprint:
-  name: Sincronização Avançada Zigbee com Sensores Opcionais
+  name: Sincronização Avançada Zigbee (Compatível com Editor Visual)
   description: >
     Sincroniza estado, brilho e temperatura de cor entre dispositivos Zigbee em grupo.
-    Integra sensores de movimento opcionalmente para acionar o grupo com transição suave.
+    Compatível com entrada de dispositivos no formato usado pelo editor visual.
   domain: automation
   input:
     grupo_zigbee:
@@ -20,7 +20,6 @@ blueprint:
               - switch
     sensores_movimento:
       name: Sensores de Movimento (Opcional)
-      description: Lista de sensores binários (motion) que podem acionar o grupo.
       default: []
       selector:
         target:
@@ -41,19 +40,19 @@ max_exceeded: silent
 
 trigger:
   - platform: state
-    entity_id: !input dispositivos_individuais
+    entity_id: !input dispositivos_individuais.entity_id
     to: 'on'
     id: ligado
   - platform: state
-    entity_id: !input dispositivos_individuais
+    entity_id: !input dispositivos_individuais.entity_id
     to: 'off'
     id: desligado
   - platform: state
-    entity_id: !input dispositivos_individuais
+    entity_id: !input dispositivos_individuais.entity_id
     attribute: brightness
     id: brilho
   - platform: state
-    entity_id: !input dispositivos_individuais
+    entity_id: !input dispositivos_individuais.entity_id
     attribute: color_temp
     id: cor
   - platform: event
