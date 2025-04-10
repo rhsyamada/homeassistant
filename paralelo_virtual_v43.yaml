@@ -128,7 +128,7 @@ blueprint:
       selector:
         number:
           min: 0
-          max: 3600
+          max: 60
           step: 1
           unit_of_measurement: s
 
@@ -248,12 +248,8 @@ action:
               - platform: state
                 entity_id: !input sensores_presenca
                 to: 'on'
-              - platform: state
-                entity_id: !input sensores_presenca
-                to: 'off'
             timeout:
               seconds: "{{ tempo_luz_acesa | int }}"
-            continue_on_timeout: true
           - condition: template
             value_template: "{{ sensores_presenca | select('is_state', 'off') | list | count == sensores_presenca | count }}"
           - service: homeassistant.turn_off
