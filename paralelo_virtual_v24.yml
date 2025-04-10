@@ -1,5 +1,5 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (Completo: Circadiano + Presença + Regras)
+  name: "Paralelo Virtual Zigbee (Completo - Circadiano, Presença e Regras)"
   description: >
     Sincroniza dispositivos Zigbee com um grupo do Home Assistant.
     Liga luzes com base em sensores de presença, horário ou iluminância.
