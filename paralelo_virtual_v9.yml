@@ -2,7 +2,7 @@ blueprint:
   name: Paralelo Virtual Zigbee (Simples)
   description: >
     Sincroniza o estado ON/OFF entre dispositivos Zigbee e um grupo de luzes.
-    Compatível com entrada via editor visual. Não inclui controle de brilho, cor, sensores ou transições.
+    Compatível com o Editor Visual do Home Assistant.
   domain: automation
   input:
     grupo_zigbee:
@@ -22,8 +22,7 @@ blueprint:
 mode: restart
 max_exceeded: silent
 
-variables:
-  grupo: !input grupo_zigbee
+trigger_variables:
   dispositivos_raw: !input dispositivos_individuais
   entidades: >
     {% set ids = dispositivos_raw.entity_id if dispositivos_raw.entity_id is iterable else [dispositivos_raw.entity_id] %}
@@ -31,11 +30,11 @@ variables:
 
 trigger:
   - platform: state
-    entity_id: "{{ entidades }}"
+    entity_id: !input dispositivos_individuais
     to: "on"
     id: ligado
   - platform: state
-    entity_id: "{{ entidades }}"
+    entity_id: !input dispositivos_individuais
     to: "off"
     id: desligado
 
@@ -49,7 +48,7 @@ action:
         sequence:
           - service: light.turn_on
             target:
-              entity_id: "{{ grupo }}"
+              entity_id: !input grupo_zigbee
 
       - conditions:
           - condition: trigger
@@ -57,4 +56,4 @@ action:
         sequence:
           - service: light.turn_off
             target:
-              entity_id: "{{ grupo }}"
+              entity_id: !input grupo_zigbee
