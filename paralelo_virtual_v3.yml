@@ -1,19 +1,17 @@
 blueprint:
-  name: Sincronização Avançada de Dispositivos Zigbee com Sensores Opcionais
+  name: Sincronização Avançada Zigbee com Sensores Opcionais
   description: >
-    Sincroniza o estado, brilho e temperatura de cor entre dispositivos Zigbee em um grupo.
-    Integra opcionalmente sensores de movimento para acionar o grupo e aplica transições suaves nas mudanças de estado.
+    Sincroniza estado, brilho e temperatura de cor entre dispositivos Zigbee em grupo.
+    Integra sensores de movimento opcionalmente para acionar o grupo com transição suave.
   domain: automation
   input:
     grupo_zigbee:
       name: Grupo de Dispositivos Zigbee
-      description: Grupo contendo todas as lâmpadas e interruptores Zigbee.
       selector:
         entity:
           domain: light
     dispositivos_individuais:
       name: Dispositivos Individuais Zigbee
-      description: Lista de dispositivos individuais (light ou switch) que disparam a sincronização do grupo.
       selector:
         target:
           entity:
@@ -22,7 +20,6 @@ blueprint:
               - switch
     sensores_movimento:
       name: Sensores de Movimento (Opcional)
-      description: Sensores de movimento que podem acionar as lâmpadas.
       default: []
       selector:
         target:
@@ -31,13 +28,12 @@ blueprint:
             device_class: motion
     transicao_suave:
       name: Tempo de Transição Suave
-      description: Tempo de transição suave ao ligar/desligar as lâmpadas (em segundos).
       default: 1
       selector:
         number:
           min: 0
           max: 10
-          unit_of_measurement: 'segundos'
+          unit_of_measurement: segundos
 
 mode: restart
 max_exceeded: silent
@@ -46,28 +42,24 @@ trigger:
   - platform: state
     entity_id: !input dispositivos_individuais
     to: 'on'
-    id: 'dispositivo_ligado'
+    id: ligado
   - platform: state
     entity_id: !input dispositivos_individuais
     to: 'off'
-    id: 'dispositivo_desligado'
+    id: desligado
   - platform: state
     entity_id: !input dispositivos_individuais
     attribute: brightness
-    id: 'brilho_alterado'
+    id: brilho
   - platform: state
     entity_id: !input dispositivos_individuais
     attribute: color_temp
-    id: 'temperatura_cor_alterada'
-  - platform: state
-    entity_id: !input sensores_movimento
-    to: 'on'
-    id: 'movimento_detectado'
+    id: cor
 
 variables:
   grupo: !input grupo_zigbee
   transicao: !input transicao_suave
-  sensores_movimento: !input sensores_movimento
+  sensores_mov: !input sensores_movimento
 
 condition: []
 
@@ -75,50 +67,59 @@ action:
   - choose:
       - conditions:
           - condition: trigger
-            id: 'dispositivo_ligado'
+            id: ligado
         sequence:
           - service: light.turn_on
-            target:
-              entity_id: "{{ grupo }}"
             data:
               transition: "{{ transicao }}"
+            target:
+              entity_id: "{{ grupo }}"
+
       - conditions:
           - condition: trigger
-            id: 'dispositivo_desligado'
+            id: desligado
         sequence:
           - service: light.turn_off
-            target:
-              entity_id: "{{ grupo }}"
             data:
               transition: "{{ transicao }}"
-      - conditions:
-          - condition: trigger
-            id: 'brilho_alterado'
-        sequence:
-          - service: light.turn_on
             target:
               entity_id: "{{ grupo }}"
+
+      - conditions:
+          - condition: trigger
+            id: brilho
+        sequence:
+          - service: light.turn_on
             data:
               brightness: "{{ state_attr(trigger.entity_id, 'brightness') }}"
               transition: "{{ transicao }}"
-      - conditions:
-          - condition: trigger
-            id: 'temperatura_cor_alterada'
-        sequence:
-          - service: light.turn_on
             target:
               entity_id: "{{ grupo }}"
+
+      - conditions:
+          - condition: trigger
+            id: cor
+        sequence:
+          - service: light.turn_on
             data:
               color_temp: "{{ state_attr(trigger.entity_id, 'color_temp') }}"
               transition: "{{ transicao }}"
-      - conditions:
-          - condition: trigger
-            id: 'movimento_detectado'
-          - condition: template
-            value_template: "{{ sensores_movimento | length > 0 }}"
-        sequence:
-          - service: light.turn_on
             target:
               entity_id: "{{ grupo }}"
-            data:
-              transition: "{{ transicao }}"
+
+  - alias: Monitorar sensores de movimento (opcional)
+    if:
+      - condition: template
+        value_template: "{{ sensores_mov | length > 0 }}"
+    then:
+      - wait_for_trigger:
+          - platform: state
+            entity_id: !input sensores_movimento
+            to: 'on'
+        timeout: "00:00:01"
+        continue_on_timeout: false
+      - service: light.turn_on
+        data:
+          transition: "{{ transicao }}"
+        target:
+          entity_id: "{{ grupo }}"
