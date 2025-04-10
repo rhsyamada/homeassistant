@@ -99,12 +99,6 @@ blueprint:
       selector:
         boolean: {}
 
-    presenca_por_iluminancia:
-      name: Priorizar Iluminância sobre Horário?
-      default: true
-      selector:
-        boolean: {}
-
     horario_presenca_1_inicio:
       name: Início Horário Presença 1
       default: "00:00"
@@ -128,6 +122,12 @@ blueprint:
       default: "23:59"
       selector:
         time: {}
+
+    presenca_por_iluminancia:
+      name: Priorizar Iluminância sobre Horário?
+      default: true
+      selector:
+        boolean: {}
 
     iluminancia_minima:
       name: Iluminância Mínima (lux)
