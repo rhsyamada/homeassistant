@@ -143,6 +143,7 @@ blueprint:
       selector:
         entity:
           domain: sensor
+          multiple: false
 
 trigger:
   - platform: state
@@ -199,8 +200,9 @@ condition:
       - condition: and
         conditions:
           - condition: template
-            value_template: >
-              {{ presenca_por_iluminancia and sensor_iluminancia is not none and iluminancia_minima is not none }}
+            value_template: "{{ presenca_por_iluminancia and sensor_iluminancia and iluminancia_minima is not none }}"
+          - condition: template
+            value_template: "{{ sensor_iluminancia is not none }}"
           - condition: numeric_state
             entity_id: !input sensor_iluminancia
             below: !input iluminancia_minima
