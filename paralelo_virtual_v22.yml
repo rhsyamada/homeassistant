@@ -1,9 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (HA - Brilho/Temperatura com Ativação)
+  name: Paralelo Virtual Zigbee (HA - Circadiano e Brilho/Temperatura Opcionais)
   description: >
     Sincroniza dispositivos Zigbee com um grupo do Home Assistant.
     Usa buffer para descartar eventos intermediários e aplica o último estado.
-    Brilho e temperatura padrão são aplicados somente se o parâmetro de ativação estiver habilitado.
+    Suporte ao ciclo circadiano (brilho e temperatura baseados em entidades externas).
   domain: automation
   input:
     dispositivos_individuais:
@@ -24,7 +24,7 @@ blueprint:
     intervalo_buffer_ms:
       name: Intervalo de Buffer (ms)
       description: Tempo de espera para aplicar o último estado após uma alternância
-      default: 1500
+      default: 1000
       selector:
         number:
           min: 200
@@ -33,21 +33,19 @@ blueprint:
           unit_of_measurement: ms
     usar_config_padrao:
       name: Aplicar Brilho e Temperatura Padrão?
-      description: Se ativado, aplica brilho e temperatura definidos ao ligar o grupo
       default: false
       selector:
         boolean: {}
     brilho_default:
-      name: Brilho Padrão (Opcional)
+      name: Brilho Padrão
       default: null
       selector:
         number:
           min: 1
           max: 255
-          mode: slider
           step: 1
     temperatura_default:
-      name: Temperatura de Cor Padrão (Opcional)
+      name: Temperatura de Cor Padrão
       default: null
       selector:
         number:
@@ -55,22 +53,37 @@ blueprint:
           max: 500
           step: 1
           unit_of_measurement: mired
+    usar_circadiano:
+      name: Usar Ciclo Circadiano?
+      default: false
+      selector:
+        boolean: {}
 
 trigger:
   - platform: state
     entity_id: !input dispositivos_individuais
+  - platform: state
+    entity_id:
+      - input_number.circadian_brightness
+      - input_number.circadian_color_temp
+    id: circadiano
 
 condition:
   - condition: template
-    value_template: "{{ trigger.to_state.state != trigger.from_state.state }}"
+    value_template: >
+      {{ trigger.id == "circadiano" or
+         (trigger.to_state.state != trigger.from_state.state) }}
 
 variables:
-  estado_final: "{{ trigger.to_state.state }}"
+  estado_final: "{{ trigger.to_state.state if trigger.id != 'circadiano' else 'on' }}"
   grupo: !input grupo_zigbee
   intervalo: !input intervalo_buffer_ms
   usar_padrao: !input usar_config_padrao
-  brilho: !input brilho_default
-  cor_temp: !input temperatura_default
+  usar_circadiano: !input usar_circadiano
+  brilho_padrao: !input brilho_default
+  temp_padrao: !input temperatura_default
+  brilho_circadiano: "{{ states('input_number.circadian_brightness') | int(0) }}"
+  temp_circadiano: "{{ states('input_number.circadian_color_temp') | int(0) }}"
 
 action:
   - delay:
@@ -78,39 +91,49 @@ action:
   - choose:
       - conditions:
           - condition: template
-            value_template: >
-              {{ estado_final == 'on' and usar_padrao and brilho is not none and cor_temp is not none }}
+            value_template: "{{ estado_final == 'on' and usar_circadiano }}"
         sequence:
           - service: homeassistant.turn_on
             data:
-              brightness: "{{ brilho }}"
-              color_temp: "{{ cor_temp }}"
+              brightness: "{{ brilho_circadiano }}"
+              color_temp: "{{ temp_circadiano }}"
             target:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
             value_template: >
-              {{ estado_final == 'on' and usar_padrao and brilho is not none and cor_temp is none }}
+              {{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is not none }}
         sequence:
           - service: homeassistant.turn_on
             data:
-              brightness: "{{ brilho }}"
+              brightness: "{{ brilho_padrao }}"
+              color_temp: "{{ temp_padrao }}"
             target:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
             value_template: >
-              {{ estado_final == 'on' and usar_padrao and brilho is none and cor_temp is not none }}
+              {{ estado_final == 'on' and usar_padrao and brilho_padrao is not none and temp_padrao is none }}
         sequence:
           - service: homeassistant.turn_on
             data:
-              color_temp: "{{ cor_temp }}"
+              brightness: "{{ brilho_padrao }}"
             target:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
             value_template: >
-              {{ estado_final == 'on' and (not usar_padrao or (brilho is none and cor_temp is none)) }}
+              {{ estado_final == 'on' and usar_padrao and brilho_padrao is none and temp_padrao is not none }}
+        sequence:
+          - service: homeassistant.turn_on
+            data:
+              color_temp: "{{ temp_padrao }}"
+            target:
+              entity_id: "{{ grupo }}"
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ estado_final == 'on' and (not usar_padrao and not usar_circadiano) }}
         sequence:
           - service: homeassistant.turn_on
             target:
