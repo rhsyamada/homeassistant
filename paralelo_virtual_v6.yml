@@ -38,31 +38,33 @@ blueprint:
 mode: restart
 max_exceeded: silent
 
+variables:
+  grupo: !input grupo_zigbee
+  transicao: !input transicao_suave
+  sensores_mov: !input sensores_movimento
+  entidades: >
+    {{ expand(!input dispositivos_individuais) | map(attribute='entity_id') | list }}
+
 trigger:
   - platform: state
-    entity_id: !input dispositivos_individuais.entity_id
+    entity_id: "{{ entidades }}"
     to: 'on'
     id: ligado
   - platform: state
-    entity_id: !input dispositivos_individuais.entity_id
+    entity_id: "{{ entidades }}"
     to: 'off'
     id: desligado
   - platform: state
-    entity_id: !input dispositivos_individuais.entity_id
+    entity_id: "{{ entidades }}"
     attribute: brightness
     id: brilho
   - platform: state
-    entity_id: !input dispositivos_individuais.entity_id
+    entity_id: "{{ entidades }}"
     attribute: color_temp
     id: cor
   - platform: event
     event_type: state_changed
     id: movimento_detectado
-
-variables:
-  grupo: !input grupo_zigbee
-  transicao: !input transicao_suave
-  sensores_mov: !input sensores_movimento
 
 condition: []
 
