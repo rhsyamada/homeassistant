@@ -1,9 +1,9 @@
 blueprint:
-  name: Paralelo Virtual Zigbee (HA - Brilho e Temperatura Opcionais)
+  name: Paralelo Virtual Zigbee (HA - Brilho/Temperatura com Ativação)
   description: >
     Sincroniza dispositivos Zigbee com um grupo do Home Assistant.
     Usa buffer para descartar eventos intermediários e aplica o último estado.
-    Permite aplicar brilho e temperatura ao ligar, se definidos.
+    Brilho e temperatura padrão são aplicados somente se o parâmetro de ativação estiver habilitado.
   domain: automation
   input:
     dispositivos_individuais:
@@ -31,6 +31,12 @@ blueprint:
           max: 5000
           step: 100
           unit_of_measurement: ms
+    usar_config_padrao:
+      name: Aplicar Brilho e Temperatura Padrão?
+      description: Se ativado, aplica brilho e temperatura definidos ao ligar o grupo
+      default: false
+      selector:
+        boolean: {}
     brilho_default:
       name: Brilho Padrão (Opcional)
       default: null
@@ -62,6 +68,7 @@ variables:
   estado_final: "{{ trigger.to_state.state }}"
   grupo: !input grupo_zigbee
   intervalo: !input intervalo_buffer_ms
+  usar_padrao: !input usar_config_padrao
   brilho: !input brilho_default
   cor_temp: !input temperatura_default
 
@@ -71,7 +78,8 @@ action:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and brilho is not none and cor_temp is not none }}"
+            value_template: >
+              {{ estado_final == 'on' and usar_padrao and brilho is not none and cor_temp is not none }}
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -81,7 +89,8 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and brilho is not none and cor_temp is none }}"
+            value_template: >
+              {{ estado_final == 'on' and usar_padrao and brilho is not none and cor_temp is none }}
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -90,7 +99,8 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and brilho is none and cor_temp is not none }}"
+            value_template: >
+              {{ estado_final == 'on' and usar_padrao and brilho is none and cor_temp is not none }}
         sequence:
           - service: homeassistant.turn_on
             data:
@@ -99,7 +109,8 @@ action:
               entity_id: "{{ grupo }}"
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and brilho is none and cor_temp is none }}"
+            value_template: >
+              {{ estado_final == 'on' and (not usar_padrao or (brilho is none and cor_temp is none)) }}
         sequence:
           - service: homeassistant.turn_on
             target:
