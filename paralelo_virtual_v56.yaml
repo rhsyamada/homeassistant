@@ -1,7 +1,8 @@
 blueprint:
   name: Controle Inteligente de Iluminação
   description: |
-    Controla grupos de lâmpadas com suporte a ciclo circadiano, valores padrão e debounce.
+    Controla grupos de lâmpadas baseado no status de dispositivos de gatilho, com suporte a ciclo circadiano,
+    valores padrão e debounce configurável em milissegundos.
   domain: automation
   input:
     lamp_groups:
@@ -14,28 +15,28 @@ blueprint:
 
     trigger_devices:
       name: Dispositivos de Gatilho
-      description: Dispositivos monitorados para alterar o estado das luzes
+      description: Dispositivos monitorados (ex: interruptores Zigbee)
       selector:
         entity:
           multiple: true
 
     use_circadian:
       name: Usar Ciclo Circadiano
-      description: Se verdadeiro, usa brilho e cor das entidades circadianas ao ligar
+      description: Usa as entidades circadianas para brilho e temperatura ao ligar
       default: false
       selector:
         boolean: {}
 
     use_defaults:
-      name: Usar Valores Default
-      description: Se verdadeiro, usa brilho e temperatura configurados manualmente
+      name: Usar Valores Padrão
+      description: Usa brilho e temperatura definidos manualmente ao ligar
       default: false
       selector:
         boolean: {}
 
     default_brightness_percent:
       name: Brilho Padrão (%)
-      description: Brilho padrão de 0 a 100%
+      description: Brilho de 0 a 100%, será convertido para valor entre 0-255
       default: 80
       selector:
         number:
@@ -47,7 +48,7 @@ blueprint:
 
     default_kelvin:
       name: Temperatura de Cor Padrão (Kelvin)
-      description: Temperatura da cor ao ligar se `use_defaults` for verdadeiro
+      description: Temperatura da cor ao ligar, se valores padrão estiverem ativados
       default: 4000
       selector:
         number:
@@ -58,24 +59,26 @@ blueprint:
           mode: slider
 
     debounce_timeout:
-      name: Timeout de Estabilização (segundos)
-      description: Tempo para aguardar antes de aplicar a ação, evitando repetição
-      default: 1
+      name: Timeout de Estabilização (ms)
+      description: Tempo em milissegundos para aguardar antes de aplicar a ação (evita múltiplos disparos)
+      default: 500
       selector:
         number:
-          min: 1
-          max: 10
-          unit_of_measurement: "s"
+          min: 100
+          max: 5000
+          step: 100
+          unit_of_measurement: "ms"
           mode: slider
 
 mode: restart
+
 variables:
   brightness_percent: !input default_brightness_percent
   brightness: "{{ (brightness_percent * 2.55) | round(0) | int }}"
   kelvin: !input default_kelvin
   use_circadian: !input use_circadian
   use_defaults: !input use_defaults
-  debounce_seconds: !input debounce_timeout
+  debounce_ms: !input debounce_timeout
   circadian_brightness: "{{ states('input_number.circadian_brightness') | int }}"
   circadian_kelvin: "{{ states('input_number.circadian_kelvin') | int }}"
 
@@ -84,11 +87,11 @@ trigger:
     entity_id: !input trigger_devices
 
 action:
-  - alias: "Aguardar timeout configurado para evitar múltiplos disparos"
+  - alias: "Aguardar timeout configurado (debounce)"
     delay:
-      seconds: "{{ debounce_seconds }}"
+      milliseconds: "{{ debounce_ms }}"
 
-  - alias: "Determinar valores de brilho e temperatura"
+  - alias: "Definir brilho e cor com base nos parâmetros"
     variables:
       final_brightness: >-
         {% if use_defaults %}
@@ -117,6 +120,7 @@ action:
             data:
               brightness: "{{ final_brightness }}"
               kelvin: "{{ final_kelvin }}"
+
       - conditions: "{{ trigger.to_state.state == 'off' }}"
         sequence:
           - alias: "Desligar grupo de lâmpadas"
