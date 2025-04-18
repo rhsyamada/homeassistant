@@ -129,7 +129,7 @@ blueprint:
       selector:
         number:
           min: 0
-          max: 3600
+          max: 200
           step: 1
           unit_of_measurement: s
 
@@ -255,7 +255,7 @@ action:
             timeout: "{{ tempo_luz_acesa | int }}"
 
           - condition: template
-            value_template: >
+            value_template: > 
               {{ expand(sensores_presenca) | selectattr('state', 'eq', 'on') | list | count == 0 }}
 
           - service: homeassistant.turn_off
