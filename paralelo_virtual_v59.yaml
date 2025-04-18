@@ -159,5 +159,13 @@ action:
             target:
               entity_id: "{{ grupo }}"
 
+      - conditions:
+          - condition: template
+            value_template: "{{ estado_final == 'off' }}"
+        sequence:
+          - service: homeassistant.turn_off
+            target:
+              entity_id: "{{ grupo }}"
+
 mode: restart
 max_exceeded: silent
