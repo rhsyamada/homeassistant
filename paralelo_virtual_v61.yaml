@@ -1,6 +1,7 @@
 blueprint:
   name: "Paralelo Virtual Zigbee (Circadiano, Regras Avançadas)"
   description: >
+    atualizado
     Sincroniza dispositivos Zigbee com grupo do Home Assistant.
     Liga luzes com base em ciclos circadianos ou configurações padrão.
     Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
@@ -101,6 +102,7 @@ variables:
   temp_circadiano: "{{ states(entidade_temp) | int(0) }}"
   estado_final: >
     {% if trigger.id == 'circadiano' %}on{% else %}{{ trigger.to_state.state }}{% endif %}
+  grupo_ativo: "{{ is_state(grupo, 'on') }}"
 
 condition: []
 
@@ -111,7 +113,7 @@ action:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ estado_final == 'on' and usar_circadiano }}"
+            value_template: "{{ estado_final == 'on' and usar_circadiano and grupo_ativo }}"
         sequence:
           - service: homeassistant.turn_on
             data:
