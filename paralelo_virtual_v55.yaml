@@ -1,96 +1,116 @@
 blueprint:
   name: Controle Inteligente de Iluminação
-  description: Controla grupos de lâmpadas com suporte a ciclo circadiano e valores padrão, acionado por dispositivos de gatilho.
+  description: |
+    Controla grupos de lâmpadas com suporte a ciclo circadiano, valores padrão e debounce.
   domain: automation
   input:
     lamp_groups:
       name: Grupos de Lâmpadas
-      description: Lista de grupos de lâmpadas que serão controlados
+      description: Lista de grupos de lâmpadas a serem controladas
       selector:
         entity:
           multiple: true
           domain: light
+
     trigger_devices:
       name: Dispositivos de Gatilho
-      description: Lista de dispositivos (interruptores ou sensores) que disparam a automação
+      description: Dispositivos monitorados para alterar o estado das luzes
       selector:
         entity:
           multiple: true
+
     use_circadian:
       name: Usar Ciclo Circadiano
-      description: Se habilitado, utilizará as entidades de brilho e temperatura do ciclo circadiano
+      description: Se verdadeiro, usa brilho e cor das entidades circadianas ao ligar
       default: false
       selector:
         boolean: {}
+
     use_defaults:
-      name: Usar Brilho e Temperatura Padrão
-      description: Se habilitado, sempre usará brilho e temperatura definidos ao ligar as lâmpadas
+      name: Usar Valores Default
+      description: Se verdadeiro, usa brilho e temperatura configurados manualmente
       default: false
       selector:
         boolean: {}
-    default_brightness:
-      name: Brilho Padrão
-      description: Valor de brilho padrão (0-255)
-      default: 200
+
+    default_brightness_percent:
+      name: Brilho Padrão (%)
+      description: Brilho padrão de 0 a 100%
+      default: 80
       selector:
         number:
-          min: 1
-          max: 255
+          min: 0
+          max: 100
+          step: 1
           unit_of_measurement: "%"
           mode: slider
+
     default_kelvin:
       name: Temperatura de Cor Padrão (Kelvin)
-      description: Temperatura da cor padrão ao ligar a luz
+      description: Temperatura da cor ao ligar se `use_defaults` for verdadeiro
       default: 4000
       selector:
         number:
           min: 2000
           max: 6500
+          step: 100
           unit_of_measurement: "K"
           mode: slider
 
+    debounce_timeout:
+      name: Timeout de Estabilização (segundos)
+      description: Tempo para aguardar antes de aplicar a ação, evitando repetição
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 10
+          unit_of_measurement: "s"
+          mode: slider
+
+mode: restart
 variables:
+  brightness_percent: !input default_brightness_percent
+  brightness: "{{ (brightness_percent * 2.55) | round(0) | int }}"
+  kelvin: !input default_kelvin
+  use_circadian: !input use_circadian
+  use_defaults: !input use_defaults
+  debounce_seconds: !input debounce_timeout
   circadian_brightness: "{{ states('input_number.circadian_brightness') | int }}"
   circadian_kelvin: "{{ states('input_number.circadian_kelvin') | int }}"
-  brightness: >-
-    {% if use_defaults %}
-      {{ default_brightness }}
-    {% elif use_circadian %}
-      {{ circadian_brightness }}
-    {% else %}
-      255
-    {% endif %}
-  kelvin: >-
-    {% if use_defaults %}
-      {{ default_kelvin }}
-    {% elif use_circadian %}
-      {{ circadian_kelvin }}
-    {% else %}
-      4000
-    {% endif %}
 
 trigger:
   - platform: state
     entity_id: !input trigger_devices
 
-condition: []
-
 action:
-  - variables:
-      use_defaults: !input use_defaults
-      use_circadian: !input use_circadian
-      default_brightness: !input default_brightness
-      default_kelvin: !input default_kelvin
+  - alias: "Aguardar timeout configurado para evitar múltiplos disparos"
+    delay:
+      seconds: "{{ debounce_seconds }}"
 
-  - alias: "Evitar loop: aguarda 1s antes de novas ações"
-    delay: "00:00:01"
+  - alias: "Determinar valores de brilho e temperatura"
+    variables:
+      final_brightness: >-
+        {% if use_defaults %}
+          {{ brightness }}
+        {% elif use_circadian %}
+          {{ circadian_brightness }}
+        {% else %}
+          255
+        {% endif %}
+      final_kelvin: >-
+        {% if use_defaults %}
+          {{ kelvin }}
+        {% elif use_circadian %}
+          {{ circadian_kelvin }}
+        {% else %}
+          4000
+        {% endif %}
 
-  - alias: "Ligar lâmpadas com brilho e temperatura apropriados"
+  - alias: "Acionar grupos de lâmpadas com brilho e cor"
     service: light.turn_on
     target:
       entity_id: !input lamp_groups
     data:
-      brightness: "{{ brightness }}"
-      kelvin: "{{ kelvin }}"
-
-mode: restart
+      brightness: "{{ final_brightness }}"
+      kelvin: "{{ final_kelvin }}"
