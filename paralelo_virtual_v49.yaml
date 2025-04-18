@@ -179,7 +179,7 @@ variables:
     {% set wrap2 = h2_start > h2_end and (now >= h2_start or now <= h2_end) %}
     {{ in_range or wrap1 or wrap2 }}
   presenca_ativa: >
-    {{ sensores_presenca | select('is_state', 'on') | list | count > 0 }}
+    {{ expand(sensores_presenca) | selectattr('state', 'eq', 'on') | list | count > 0 }}
   presenca_valida: >
     {{ (not presenca_por_horario and presenca_ativa) or (presenca_por_horario and presenca_ativa and horario_ok) }}
 
@@ -256,7 +256,7 @@ action:
 
           - condition: template
             value_template: >
-              {{ expand(!input sensores_presenca) | selectattr('state', 'eq', 'on') | list | count == 0 }}
+              {{ expand(sensores_presenca) | selectattr('state', 'eq', 'on') | list | count == 0 }}
 
           - service: homeassistant.turn_off
             target:
