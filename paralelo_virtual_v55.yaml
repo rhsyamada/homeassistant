@@ -107,10 +107,19 @@ action:
           4000
         {% endif %}
 
-  - alias: "Acionar grupos de lâmpadas com brilho e cor"
-    service: light.turn_on
-    target:
-      entity_id: !input lamp_groups
-    data:
-      brightness: "{{ final_brightness }}"
-      kelvin: "{{ final_kelvin }}"
+  - choose:
+      - conditions: "{{ trigger.to_state.state == 'on' }}"
+        sequence:
+          - alias: "Ligar grupo de lâmpadas"
+            service: light.turn_on
+            target:
+              entity_id: !input lamp_groups
+            data:
+              brightness: "{{ final_brightness }}"
+              kelvin: "{{ final_kelvin }}"
+      - conditions: "{{ trigger.to_state.state == 'off' }}"
+        sequence:
+          - alias: "Desligar grupo de lâmpadas"
+            service: light.turn_off
+            target:
+              entity_id: !input lamp_groups
