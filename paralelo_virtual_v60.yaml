@@ -81,8 +81,6 @@ blueprint:
 trigger:
   - platform: state
     entity_id: !input dispositivos_individuais
-    for:
-      milliseconds: !input intervalo_buffer_ms
 
   - platform: state
     entity_id:
@@ -107,6 +105,9 @@ variables:
 condition: []
 
 action:
+  - delay:
+      milliseconds: !input intervalo_buffer_ms
+
   - choose:
       - conditions:
           - condition: template
@@ -166,5 +167,5 @@ action:
             target:
               entity_id: "{{ grupo }}"
 
-mode: queued
+mode: restart
 max_exceeded: silent
