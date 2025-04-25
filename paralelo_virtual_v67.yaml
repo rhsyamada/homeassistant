@@ -187,5 +187,5 @@ action:
             target:
               entity_id: "{{ grupo }}"
 
-mode: restart
-max_exceeded: silent
+mode: queued
+max: 3
