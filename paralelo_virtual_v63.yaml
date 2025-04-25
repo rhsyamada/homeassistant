@@ -25,7 +25,8 @@ blueprint:
             - switch
 
     template_estado_real:
-      name: Entidade de Template do Estado Real (ex: binary_sensor.grupo_iluminacao_sala_real_state)
+      name: Entidade de Template do Estado Real
+      description: "Ex: binary_sensor.grupo_iluminacao_sala_real_state"
       selector:
         entity:
           domain: binary_sensor
