@@ -111,22 +111,13 @@ variables:
   estado_final: >
     {% if trigger.id == 'circadiano' %}on{% else %}{{ trigger.to_state.state }}{% endif %}
   grupo_ativo: "{{ is_state(grupo, 'on') }}"
-  tempo_desde_trigger: >
-    {% set now = now() %}
-    {% set last = as_datetime(trigger.to_state.last_changed) %}
-    {{ (now - last).total_seconds() }}
 
 condition: []
 
 action:
-  - choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ tempo_desde_trigger > 2 }}"
-        sequence:
-          - wait_template: "{{ is_state(template_real, estado_final) }}"
-            timeout: "{{ '00:00:' ~ timeout_sincronizacao }}"
-            continue_on_timeout: true
+  - wait_template: "{{ is_state(template_real, estado_final) }}"
+    timeout: "{{ '00:00:' ~ timeout_sincronizacao }}"
+    continue_on_timeout: true
 
   - choose:
       - conditions:
