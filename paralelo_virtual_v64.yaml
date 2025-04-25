@@ -4,7 +4,7 @@ blueprint:
     atualizado
     Sincroniza dispositivos Zigbee com grupo do Home Assistant.
     Liga luzes com base em ciclos circadianos ou configurações padrão.
-    Aplica brilho/temperatura padrão ou circadiano. Inclui buffer e debounce.
+    Aplica brilho/temperatura padrão ou circadiano. Inclui sincronização com status real do grupo.
   domain: automation
   input:
     dispositivos_individuais:
@@ -31,15 +31,15 @@ blueprint:
         entity:
           domain: binary_sensor
 
-    intervalo_buffer_ms:
-      name: Intervalo de Buffer (ms)
-      default: 1000
+    timeout_espera_sincronizacao:
+      name: Timeout de Espera pela Sincronização do Estado Real (segundos)
+      default: 10
       selector:
         number:
-          min: 200
-          max: 5000
-          step: 100
-          unit_of_measurement: ms
+          min: 1
+          max: 60
+          step: 1
+          unit_of_measurement: s
 
     usar_config_padrao:
       name: Aplicar Brilho e Temperatura Padrão?
@@ -98,7 +98,6 @@ trigger:
 
 variables:
   grupo: !input grupo_zigbee
-  intervalo: !input intervalo_buffer_ms
   usar_padrao: !input usar_config_padrao
   usar_circadiano: !input usar_circadiano
   brilho_padrao: !input brilho_default
@@ -106,6 +105,7 @@ variables:
   entidade_brilho: !input entidade_circadiana_brilho
   entidade_temp: !input entidade_circadiana_temp
   template_real: !input template_estado_real
+  timeout_sincronizacao: !input timeout_espera_sincronizacao
   brilho_circadiano: "{{ states(entidade_brilho) | int(0) }}"
   temp_circadiano: "{{ states(entidade_temp) | int(0) }}"
   estado_final: >
@@ -116,7 +116,7 @@ condition: []
 
 action:
   - wait_template: "{{ is_state(template_real, estado_final) }}"
-    timeout: 10s
+    timeout: "{{ '00:00:' ~ timeout_sincronizacao }}"
     continue_on_timeout: true
 
   - choose:
