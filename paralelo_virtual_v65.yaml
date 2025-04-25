@@ -1,101 +1,4 @@
-blueprint:
-  name: "Paralelo Virtual Zigbee (Circadiano, Regras Avançadas)"
-  description: >
-    atualizado
-    Sincroniza dispositivos Zigbee com grupo do Home Assistant.
-    Liga luzes com base em ciclos circadianos ou configurações padrão.
-    Aplica brilho/temperatura padrão ou circadiano. Inclui sincronização com status real do grupo.
-  domain: automation
-  input:
-    dispositivos_individuais:
-      name: Dispositivos Individuais (gatilhos)
-      selector:
-        entity:
-          domain:
-            - light
-            - switch
-          multiple: true
-
-    grupo_zigbee:
-      name: Grupo de Luzes ou Switches (HA)
-      selector:
-        entity:
-          domain:
-            - light
-            - switch
-
-    template_estado_real:
-      name: Entidade de Template do Estado Real
-      description: "Ex: binary_sensor.grupo_iluminacao_sala_real_state"
-      selector:
-        entity:
-          domain: binary_sensor
-
-    timeout_espera_sincronizacao:
-      name: Timeout de Espera pela Sincronização do Estado Real (segundos)
-      default: 10
-      selector:
-        number:
-          min: 1
-          max: 60
-          step: 1
-          unit_of_measurement: s
-
-    usar_config_padrao:
-      name: Aplicar Brilho e Temperatura Padrão?
-      default: false
-      selector:
-        boolean: {}
-
-    brilho_default:
-      name: Brilho Padrão
-      default: null
-      selector:
-        number:
-          min: 1
-          max: 255
-          step: 1
-
-    temperatura_default:
-      name: Temperatura de Cor Padrão
-      default: null
-      selector:
-        number:
-          min: 153
-          max: 500
-          step: 1
-          unit_of_measurement: mired
-
-    usar_circadiano:
-      name: Usar Ciclo Circadiano?
-      default: false
-      selector:
-        boolean: {}
-
-    entidade_circadiana_brilho:
-      name: Entidade do Brilho Circadiano
-      default: input_number.circadian_brightness
-      selector:
-        entity:
-          domain: input_number
-
-    entidade_circadiana_temp:
-      name: Entidade da Temperatura Circadiana
-      default: input_number.circadian_color_temp
-      selector:
-        entity:
-          domain: input_number
-
-trigger:
-  - platform: state
-    entity_id: !input dispositivos_individuais
-
-  - platform: state
-    entity_id:
-      - !input entidade_circadiana_brilho
-      - !input entidade_circadiana_temp
-    id: circadiano
-
+...
 variables:
   grupo: !input grupo_zigbee
   usar_padrao: !input usar_config_padrao
@@ -111,13 +14,21 @@ variables:
   estado_final: >
     {% if trigger.id == 'circadiano' %}on{% else %}{{ trigger.to_state.state }}{% endif %}
   grupo_ativo: "{{ is_state(grupo, 'on') }}"
+  tempo_desde_trigger: >
+    {% set now = now() %}
+    {% set last = as_datetime(trigger.to_state.last_changed) %}
+    {{ (now - last).total_seconds() }}
 
-condition: []
-
+...
 action:
-  - wait_template: "{{ is_state(template_real, estado_final) }}"
-    timeout: "{{ '00:00:' ~ timeout_sincronizacao }}"
-    continue_on_timeout: true
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ tempo_desde_trigger > 2 }}"
+        sequence:
+          - wait_template: "{{ is_state(template_real, estado_final) }}"
+            timeout: "{{ '00:00:' ~ timeout_sincronizacao }}"
+            continue_on_timeout: true
 
   - choose:
       - conditions:
@@ -177,6 +88,3 @@ action:
           - service: homeassistant.turn_off
             target:
               entity_id: "{{ grupo }}"
-
-mode: restart
-max_exceeded: silent
